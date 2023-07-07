@@ -25,11 +25,13 @@
 
 equilibrium_init_create <- function(age_vector, het_brackets,
                                     country = NULL, admin_unit = NULL, ft,
-                                    EIR, model_param_list)
+                                    EIR, model_param_list, runTime, custom_seas=FALSE)
 {
 
   # mpl is shorter :)
   mpl <- model_param_list
+
+
 
   ## Check Parameters
   if(!is.numeric(age_vector)) stop("age_vector provided is not numeric")
@@ -307,8 +309,15 @@ equilibrium_init_create <- function(age_vector, het_brackets,
   admin_matches <- admin_match(admin_unit = admin_unit, country = country,
                           admin_units_seasonal = admin_units_seasonal)
 
-  if(admin_matches == 0){
-    ssa0 <- ssa1 <- ssa2 <- ssa3 <- ssb1 <- ssb2 <- ssb3 <- theta_c <- 0
+
+    if(admin_matches == 0 & !mpl$custom_seas){
+    scaling_cc_t<- rep(1,(runTime+1)) # add 1 to allow for zero time
+
+  } else if(admin_matches == 0 & mpl$custom_seas) {
+
+    scaling_cc_t<- c(1,mpl$scaling_cc_seas) # add 1 as initial value to allow for zero time
+
+
   } else {
     ssa0 <- admin_units_seasonal$a0[admin_matches]
     ssa1 <- admin_units_seasonal$a1[admin_matches]
@@ -318,7 +327,19 @@ equilibrium_init_create <- function(age_vector, het_brackets,
     ssb2 <- admin_units_seasonal$b2[admin_matches]
     ssb3 <- admin_units_seasonal$b3[admin_matches]
     theta_c <- admin_units_seasonal$theta_c[admin_matches]
-  }
+
+    # generate seasonal scaling of larval carrying capacity for one year
+    annual_scaling<-seasonality(c(ssa0, ssa1, ssb2, ssa2, ssb2, ssa3, ssb3))[[1]]
+
+    # now generate for the whole model run time.
+    # first generate up to the end of the year AFTER model run time.
+    scaling_cc_t<- rep(annual_scaling, ceiling(runTime/365))
+    # trim in case model run time is not a whole number of years.
+    scaling_cc_t<- c(1,scaling_cc_t[1:runTime])
+
+    }
+
+  tt <- 0:runTime
 
   # better het bounds for equilbirum initialisation in individual model
   zetas <- rlnorm(n = 1e5,meanlog = -mpl$sigma2/2, sdlog = sqrt(mpl$sigma2))
@@ -335,6 +356,7 @@ equilibrium_init_create <- function(age_vector, het_brackets,
   het_bounds <- sort(zetas)[wt_cuts]
   het_bounds[length(het_bounds)] <- (mpl$max_age/365)+1
 
+
   ## collate init
   res <- list(init_S = S_eq, init_T = T_eq, init_D = D_eq, init_A = A_eq, init_U = U_eq,
               init_P = P_eq, init_Y = Y_eq, init_IB = IB_eq, init_ID = ID_eq, init_ICA = ICA_eq,
@@ -344,9 +366,9 @@ equilibrium_init_create <- function(age_vector, het_brackets,
               omega = omega, foi_age = foi_age, rel_foi = rel_foi,
               K0 = K0, mv0 = mv0, na = na, nh = nh, ni = num_int, x_I = x_I,
               FOI = FOI_eq, EIR_eq = EIR_eq, cA_eq = cA_eq,
-              den = den, age59 = age59, age05 = age05, ssa0 = ssa0, ssa1 = ssa1,
-              ssa2 = ssa2, ssa3 = ssa3, ssb1 = ssb1, ssb2 = ssb2, ssb3 = ssb3,
-              theta_c = theta_c, age = age_vector*mpl$DY, ft = ft, FOIv_eq = FOIv_eq,
+              den = den, age59 = age59, age05 = age05,
+              scaling_cc_t=scaling_cc_t, tt = tt,
+              age = age_vector*mpl$DY, ft = ft, FOIv_eq = FOIv_eq,
               betaS = betaS, betaA = betaA, betaU = betaU, FOIvij_eq=FOIvij_eq,
               age_mid_point = age_mid_point, het_bounds = het_bounds, pi = pi,
               age20l = age20l, age20u = age20u, age_20_factor = age_20_factor)

@@ -207,6 +207,13 @@ kD <- user()
 dim(age) <- na
 age[] <- user() # vector of age categories supplied by user
 
+scaling_cc_t[] <- user()
+dim(scaling_cc_t) <- user()
+tt[] <- user()
+dim(tt) <- user()
+scaling_cc <- interpolate(tt, scaling_cc_t, "linear")
+#scaling_cc <-
+
 dim(fd) <- na
 fd[1:na] <- 1-(1-fD0)/(1+(age[i]/aD)^gammaD)
 dim(p_det) <- c(na,nh,num_int)
@@ -235,25 +242,13 @@ output(Ivout) <- Iv
 output(omega) <- omega
 ##------------------------------------------------------------------------------
 ##########################
-## SEASONALITY FUNCTION ##
+## SEASONALITY FUNCTION ## NOW REMOVED AND CREATED WITHIN 'equilibrium-init-create.R'
 ##########################
 ##------------------------------------------------------------------------------
 
 # Seasonality is added into the model using a Fourier series that was fit to rainfall at every admin 1 level
-pi <- user() # weird quirk, need to pass pi
+#pi <- user() # weird quirk, need to pass pi
 
-# The parameters for the fourier series
-ssa0 <- user()
-ssa1 <- user()
-ssa2 <- user()
-ssa3 <- user()
-ssb1 <- user()
-ssb2 <- user()
-ssb3 <- user()
-theta_c <- user()
-# Recreation of the rainfall function
-theta2 <- if(ssa0 == 0 && ssa1  == 0 && ssa2  == 0 && ssb1  == 0 && ssb2  == 0 && ssb3  == 0 && theta_c  == 0)
-  1 else max((ssa0+ssa1*cos(2*pi*t/365)+ssa2*cos(2*2*pi*t/365)+ssa3*cos(3*2*pi*t/365)+ssb1*sin(2*pi*t/365)+ssb2*sin(2*2*pi*t/365)+ ssb3*sin(3*2*pi*t/365) ) /theta_c,0.001)
 
 ##------------------------------------------------------------------------------
 #####################
@@ -360,7 +355,8 @@ lambda <- -0.5*b_lambda + sqrt(0.25*b_lambda^2 + gammaL*beta_larval*muLL*dEL/(2*
 K0 <- 2*mv0*dLL*mu0*(1+dPL*muPL)*gammaL*(lambda+1)/(lambda/(muLL*dEL)-1/(muLL*dLL)-1)
 
 # Seasonal carrying capacity KL = base carrying capacity K0 * effect for time of year theta:
-KL <- K0*theta2
+KL <- K0*scaling_cc #*scaling_factor for each day to change average carrying capacity and input seasonality.
+
 fv <- 1/( tau1/(1-zbar) + tau2 ) # mosquito feeding rate (zbar from intervention param.)
 mu <- -fv*log(p1*p2) # mosquito death rate
 
